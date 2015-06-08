@@ -54,6 +54,34 @@ class ServerBoard:
     ship1 = Ship(1, 5)
     ship2 = Ship(8, 5)
 
+    def __repr__(self):
+        pointsOfInterest = self.POIs()
+        representation = ''
+        for y in range(self.height):
+            for x in range(self.width):
+                if (x,y) in pointsOfInterest:
+                    representation += self.getSymbol(pointsOfInterest[(x,y)])
+                else:
+                    representation += '-'
+            representation += '\n'
+        return representation
+
+    def getSymbol(self, obj):
+        if isinstance(obj, Ship):
+            return ['^', '>', 'v', '<'][obj.heading]
+        else:
+            return '?'
+
+    #this methods creates a dictionary of all points of interest on the board
+    #the keys are (x,y) tuples, and the values are refrences to the object of interest
+    def POIs(self):
+        d = {}
+        d[(self.ship1.x, self.ship1.y)] = self.ship1
+        d[(self.ship2.x, self.ship2.y)] = self.ship2
+        #do the same for crystals
+        #do the same for mines
+        return d
+
     # changes the position of the ship on the board based
     # on the given moves
     # assumes moves will be given as a string of characters
@@ -108,3 +136,11 @@ class ServerBoard:
         # a left turn is negative, a right turn is positive
         moves = {'l': -1, 'r': 1, 'u': 2}
         ship.heading = (ship.heading + moves[move]) % 4
+
+
+#==============================================================#
+### main ###
+
+b = ServerBoard()
+print b
+
