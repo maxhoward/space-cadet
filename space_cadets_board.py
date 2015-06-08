@@ -16,7 +16,7 @@ class ServerBoard:
 
 	height = 10
 	width = 10
-	#self.crystals = set()
+	#self.crystals = set() #crystals begins as an empty set of locations
 
 	ship1 = Ship(1, 5)
 	ship2 = Ship(8, 5)
