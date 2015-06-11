@@ -7,13 +7,15 @@
 # (Only one board will ever exist - no need for multiple instances)
 
 import random
+import graphics as gr
+import time
 
 (N, E, S, W) = (0, 1, 2, 3)
 (F, R, B, L) = (0, 1, 2, 3)
 #=======================================================#
 #dummy class to allow for creation of Ship objects
 class Ship:
-    def __init__(self, x, y, heading = N):
+    def __init__(self, x, y, heading = W):
         self.x = x
         self.y = y
         self.heading = heading
@@ -34,23 +36,29 @@ class Ship:
         if self.heading == E:
             self.x += 1
 
-    def getView(self):
-        ShipView(ship)
+    def img(self):
+        center = gr.Point(50*self.x+25,50*self.y+25)
+        if self.heading == N:
+            triangle = gr.Polygon([gr.Point(center.x,center.y-20),gr.Point(center.x-10,center.y+10),gr.Point(center.x+10,center.y+10)])
+        if self.heading == E:
+            triangle = gr.Polygon([gr.Point(center.x+20,center.y),gr.Point(center.x-10,center.y-10),gr.Point(center.x-10,center.y+10)])
+        if self.heading == S:
+            triangle = gr.Polygon([gr.Point(center.x,center.y+20),gr.Point(center.x-10,center.y-10),gr.Point(center.x+10,center.y-10)])
+        if self.heading == W:
+            triangle = gr.Polygon([gr.Point(center.x-20,center.y),gr.Point(center.x+10,center.y-10),gr.Point(center.x+10,center.y+10)])
+        damage = {0: 'blue', 1: 'yellow', 2: 'red'}
+        triangle.setFill(damage[self.damage])
+        return triangle
 
     #this means that the ship accidentially fired a missle
     #without the enemy in their firing cone
-    #this function causes the ship to fire its front missle (if existant)
-    #or its back missle (if existant).
+    #this function causes the ship to fire a front missle (if existant)
+    #or a back missle (if existant).
     def loseMissle(self):
         if self.frontTube > 0:
             self.frontTube -= 1
         elif self.backTube > 0:
             self.backTube -= 1
-
-class ShipView():
-    def __init__(self, ship):
-        self.x = ship.x
-        self.y = ship.y
 #=======================================================#
 
 # A board will only exist on the server machine
@@ -64,12 +72,25 @@ class ShipView():
 #logical checks i.e. "u-turn" is simply add 2.
 
 class ServerBoard:
-    height = 10
-    width = 10
-    #self.crystals = set() #crystals begins as an empty set of locations
 
-    ship1 = Ship(1, 5)
-    ship2 = Ship(8, 5)
+    def __init__(self):
+        self.height = 10
+        self.width = 10
+        self.crystals = set([(1,3),(2,6)]) #crystals begins as an empty set of locations
+        self.mines = set([(2,2), (8,8)])
+
+        self.ship1 = Ship(1, 5, N)
+        self.ship2 = Ship(8, 5, N)
+        self.win = gr.GraphWin("board", 500, 500)
+        for x in range(10):
+            l = gr.Line(gr.Point(50*x,0), gr.Point(50*x,500))
+            l.draw(self.win)
+        for y in range(10):
+            l = gr.Line(gr.Point(0,50*y), gr.Point(500, 50*y))
+            l.draw(self.win)
+        self.drawnObjects = set()
+        self.refreshView()
+
 
     def __repr__(self):
         pointsOfInterest = self.POIs()
@@ -98,11 +119,10 @@ class ServerBoard:
         d = {}
         d[(self.ship1.x, self.ship1.y)] = self.ship1
         d[(self.ship2.x, self.ship2.y)] = self.ship2
-        #the following code is for mines and crystals
-        #for pos in setOfCrystalPositions:
-        #    d[pos] = 'c'
-        #for pos in setOfMinePositions:
-        #    d[pos] = 'm'
+        for pos in self.crystals:
+            d[pos] = 'c'
+        for pos in self.mines:
+            d[pos] = 'm'
         return d
 
     # changes the position of the ship on the board based
@@ -121,6 +141,9 @@ class ServerBoard:
                     #handle crystal collision (does anything happen?)
             else:
                 self.rotate(ship, command)
+            self.refreshView()
+            time.sleep(0.07)
+
             ## later on, we will send the ship view to clients so
             ## that they see each step taken
 
@@ -165,17 +188,16 @@ class ServerBoard:
     def firingArc(self, ship, other):
         return 0
 
-
     #returns true if a ship is on a border square and facing the
     #edge of the board
     def onTheEdge(self, ship):
         if (ship.x == 0) and (ship.pos == N):
             return True
-        if (ship.x == ServerBoard.height - 1) and (ship.pos == S):
+        if (ship.x == self.height - 1) and (ship.pos == S):
             return True
         if (ship.y == 0) and (ship.pos == W):
             return True
-        if (ship.y == ServerBoard.width - 1) and (ship.pos == E):
+        if (ship.y == self.width - 1) and (ship.pos == E):
             return True
         return False
 
@@ -200,9 +222,32 @@ class ServerBoard:
         assert(ship.frontTube >= 0)
         assert(ship.backTube >= 0)
 
+    def refreshView(self):
+        for x in self.drawnObjects:
+            x.undraw()
+        pois = self.POIs()
+        for point in pois.keys():
+            obj = pois[point]
+            if isinstance(obj, Ship):
+                img = obj.img()
+                img.draw(self.win)
+                self.drawnObjects.add(img)
+            if obj in ['m', 'c']:
+                center = gr.Point(50*point[0]+25,50*point[1]+25)
+                circ = gr.Circle(center, 20)
+                if obj == 'm':
+                    circ.setFill('red')
+                if obj == 'c':
+                    circ.setFill('CadetBlue4')
+                circ.draw(self.win)
+                self.drawnObjects.add(circ)
+
+
 #==============================================================#
 ### main ###
 
 b = ServerBoard()
-print b
+time.sleep(.5)
+b.executeMoveCommand(b.ship1, 'frff')
 
+END = raw_input("\n")
