@@ -14,6 +14,7 @@ class Ship:
         self.x = x
         self.y = y
         self.heading = heading
+        self.damage = 0
         self.lockon = 0
         self.spaceJam = 0
 
@@ -78,8 +79,10 @@ class ServerBoard:
         d = {}
         d[(self.ship1.x, self.ship1.y)] = self.ship1
         d[(self.ship2.x, self.ship2.y)] = self.ship2
-        #do the same for crystals
-        #do the same for mines
+        #for pos in setOfCrystalPositions:
+        #    d[pos] = 'c'
+        #for pos in setOfMinePositions:
+        #    d[pos] = 'm'
         return d
 
     # changes the position of the ship on the board based
@@ -92,10 +95,14 @@ class ServerBoard:
                 if not self.onTheEdge(ship):
                     #we only move the ship if it won't fall off the edge
                     ship.stepForward()
+                    #check for collision!!!!
+                    #handle ship collision (decide how we want to)
+                    #deduct health for mine collision, remove mine
+                    #handle crystal collision (does anything happen?)
             else:
                 self.rotate(ship, command)
-            ## later on, we will send the ship view here so
-            ## that we can see each step taken
+            ## later on, we will send the ship view to clients so
+            ## that they see each step taken
 
     # the following function determines whether or not ship2 is
     # in *either* firing cone of ship1
