@@ -36,6 +36,18 @@ class Ship:
         if self.heading == E:
             self.x += 1
 
+    #returns the relative orientation for a given cardinal direction
+    #for example, eastern shields of a south facing ship
+    #would be (E - S) % 4 -> (1 - 2) % 4 -> -1 % 4 -> 3 (or it's left shields)
+    def cardinalShields(self, direction):
+        return (direction - self.heading) % 4
+
+    #returns the strength of shields in a given cardinal direction
+    #for example, eastern shields of a south facing ship
+    #would be self.shields[self.cardinalShields]
+    def cardinalStrength(self,direction):
+        return self.shields[self.cardinalShields(direction)]
+
     def img(self):
         center = gr.Point(50*self.x+25,50*self.y+25)
         if self.heading == N:
@@ -50,15 +62,16 @@ class Ship:
         triangle.setFill(damage[self.damage])
         return triangle
 
-    #this means that the ship accidentially fired a missle
-    #without the enemy in their firing cone
-    #this function causes the ship to fire a front missle (if existant)
+    #this means that the ship accidentially fired some missles
+    #without the enemy in their firing cone/correct firing cone
+    #this function causes the ship to lose a front missle (if existant)
     #or a back missle (if existant).
-    def loseMissle(self):
-        if self.frontTube > 0:
-            self.frontTube -= 1
-        elif self.backTube > 0:
-            self.backTube -= 1
+    def loseAccidentalMissle(self, numMissles):
+        for x in range(numMissles):
+            if self.frontTube > 0:
+                self.frontTube -= 1
+            elif self.backTube > 0:
+                self.backTube -= 1
 #=======================================================#
 
 # A board will only exist on the server machine
@@ -111,7 +124,7 @@ class ServerBoard:
             return '?'
 
     def otherShip(self, ship):
-        return ship1 if ship == ship2 else ship2
+        return self.ship1 if ship == self.ship2 else self.ship2
 
     #this methods creates a dictionary of all points of interest on the board
     #the keys are (x,y) tuples, and the values are refrences to the object of interest
@@ -130,6 +143,7 @@ class ServerBoard:
     # assumes moves will be given as a string of characters
     # 'f', 'l', 'r', 'u' for forward, left turn, right turn, u turn
     def executeMoveCommand(self, ship, moveString):
+        print "Executing move sequence"
         for command in moveString:
             if command == 'f':
                 if not self.onTheEdge(ship):
@@ -141,21 +155,49 @@ class ServerBoard:
                     #handle crystal collision (does anything happen?)
             else:
                 self.rotate(ship, command)
-            self.refreshView()
             time.sleep(0.07)
-
+            self.refreshView()
             ## later on, we will send the ship view to clients so
             ## that they see each step taken
+        print "Move sequence complete"
 
+    #assumes that numMissles will be checked outside this function
+    #(that call will only made with numMissles == 2 if the firing ship
+    # has 2 missles loaded *on the same side*)
     def executeFireCommand(self, ship, numMissles):
-        assert(numMissles <= (ship.frontTube + ship.backTube))
+        if numMissles < (ship.frontTube + ship.backTube):
+            print "Insufficient Missles"
+            return
+        print "Executing fire command"
         other = self.otherShip(ship)
         if self.canTarget(ship, other):
-            self.removeTorpedos(ship, other, numMissles)
-            ship.lockon = 0
-            if self.canHit(ship, other):
-                firingDirection = self.findFiringDirection(ship, other)
-                self.calculateDamage(other, numMissles, firingDirection)
+            arc = self.determineArc(ship, other)
+            if (arc == 1) and (ship.frontTube < numMissles):
+                print "Missles not in Front Tubes"
+                ship.loseAccidentalMissle(numMissles)
+            elif arc == 0 and ship.backTube < numMissles:
+                print "Missles not in Back Tubes"
+                ship.loseAccidentalMissle(numMissles)
+            else: #enemy in firing arc and missle(s) in appropriate tube
+                self.removeTorpedos(ship, numMissles, arc)
+                if self.canHit(ship, other):
+                    shieldSide = self.otherShieldSide(ship, other)
+                    dam = self.calculateDamage(other, numMissles, shieldSide)
+                    other.damage += dam
+                    print "Ship takes", dam, "damage!"
+                    other.shields[shieldSide] = 0
+                    #tell other ship to lose power dice, if appropriate
+                    #tell other ship to free its dice from "shieldSide"
+                else:
+                    print "Insufficient lockon."
+                other.spaceJam = 0
+                #tell other to free its jamming dice
+        else:
+            print "Enemy ship not in firing cone.",numMissles,"missles lost."
+            ship.loseAccidentalMissle(numMissles) #they shot without the enemy in their firing arc
+        ship.lockon = 0
+        #tell ship to lose its lockon dice
+        self.refreshView()
 
     # the following function determines whether or not ship2 is
     # in *either* firing cone of ship1
@@ -164,12 +206,24 @@ class ServerBoard:
         rowDiff = abs(ship1.y - ship2.y)
         colDiff = abs(ship1.x - ship2.x)
         if ship1.heading in [N, S]:
-            if rowDiff < colDiff:
+            if rowDiff >= colDiff:
                 return True
         if ship1.heading in [E, W]:
-            if rowDiff > colDiff:
+            if rowDiff <= colDiff:
                 return True
         return False
+
+    #given that ship2 is in one of ship1's firing arcs, determines which
+    #a return value of 1 means front arc, 0 means back arc
+    def determineArc(self, ship1, ship2):
+        if ship1.heading == N:
+            return ship2.y < ship1.y
+        if ship1.heading == S:
+            return ship2.y > ship1.y
+        if ship1.heading == E:
+            return ship2.x > ship1.x
+        if ship1.heading == W:
+            return ship2.x < ship2.x
 
     #assumes ship2 is in ship1's firing cone, determines whether
     #ship1 has sufficient lockon to hit ship2 (encountering shields)
@@ -181,23 +235,68 @@ class ServerBoard:
         else:
             return False
 
-    def calculateDamage(self, ship, numMissles, firingDirection):
-        return 2        
+    def otherShieldSide(self, ship, other):
+        if abs(ship.y - other.y) > abs(ship.x - other.x):
+            if ship.y < other.y:
+                #North side of other
+                return other.cardinalShields(N)
+            if ship.y > other.y:
+                #South side of other
+                return other.cardinalShields(S)
+        if abs(ship.y - other.y) < abs(ship.x - other.x):
+            if ship.x < other.x:
+                #West side of other
+                return other.cardinalShields(W)
+            if ship.x > other.x:
+                #East side of other
+                return other.cardinalShields(E)
+        #tiebreaking positive diagonal
+        if (ship.y - other.y) == (ship.x - other.x):
+            if ship.y < other.y:
+                #tiebreak between other's North and East shields
+                if other.cardinalStrength(N) > other.cardinalStrength(E):
+                    return other.cardinalShields(N)
+                else:
+                    return other.cardinalShields(E)
+            if ship.y > other.y:
+                #tiebreak between other's South and West shields
+                if other.cardinalStrength(S) > other.cardinalStrength(W):
+                    return other.cardinalShields(S)
+                else:
+                    return other.cardinalShields(W)
+        #tiebreaking negative diagonal
+        if (ship.y - other.y) == (other.x - ship.x):
+            if ship.x < other.x:
+                #tiebreak between other's North and West shields
+                if other.cardinalStrength(N) > other.cardinalStrength(W):
+                    return other.cardinalShields(N)
+                else:
+                    return other.cardinalShields(W)
+            if ship.x > other.x:
+                #tiebreak between other's South and East shields
+                if other.cardinalStrength(S) > other.cardinalStrength(E):
+                    return other.cardinalShields(S)
+                else:
+                    return other.cardinalShields(E)
 
-    #returns a tuple of the slope of firing angle
-    def firingArc(self, ship, other):
-        return 0
+    def calculateDamage(self, ship, numMissles, shieldSide):
+        shieldStrength = ship.shields[shieldSide]
+        damage = 0
+        for missle in range(numMissles):
+            if random.choice([0,0,0,1,1,2]) >= shieldStrength:
+                damage += 1
+        return damage
 
     #returns true if a ship is on a border square and facing the
     #edge of the board
     def onTheEdge(self, ship):
-        if (ship.x == 0) and (ship.pos == N):
+        if (ship.x == 0) and (ship.heading == N):
             return True
-        if (ship.x == self.height - 1) and (ship.pos == S):
+        if (ship.x == self.height - 1) and (ship.heading == S):
             return True
-        if (ship.y == 0) and (ship.pos == W):
+        if (ship.y == 0) and (ship.heading == W):
             return True
-        if (ship.y == self.width - 1) and (ship.pos == E):
+        if (ship.y == self.width - 1) and (ship.heading == E):
             return True
         return False
 
@@ -206,19 +305,11 @@ class ServerBoard:
         moves = {'l': -1, 'r': 1, 'u': 2}
         ship.heading = (ship.heading + moves[move]) % 4
 
-    def removeTorpedos(self, ship, other, numMissles):
-        if ship.heading == N:
-            if other.y <= ship.y:
-                ship.frontTube -= numMissles
-        if ship.heading == S:
-            if other.y > ship.y:
-                ship.backTube -= numMissles
-        if ship.heading == E:
-            if other.x >= ship.x:
-                ship.frontTube -= numMissles
-        if ship.heading == W:
-            if other.x < ship.x:
-                ship.backTube -= numMissles
+    def removeTorpedos(self, ship, numMissles, arc):
+        if arc:
+            ship.frontTube -= numMissles
+        else:
+            ship.backTube -= numMissles
         assert(ship.frontTube >= 0)
         assert(ship.backTube >= 0)
 
