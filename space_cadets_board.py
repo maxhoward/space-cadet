@@ -336,9 +336,9 @@ class ServerBoard:
 
 #==============================================================#
 ### main ###
+if __name__ == "__main__":
+	b = ServerBoard()
+	time.sleep(.5)
+	b.executeMoveCommand(b.ship1, 'frff')
 
-b = ServerBoard()
-time.sleep(.5)
-b.executeMoveCommand(b.ship1, 'frff')
-
-END = raw_input("\n")
+	END = raw_input("\n")
