@@ -66,7 +66,7 @@ class Ship:
     #without the enemy in their firing cone/correct firing cone
     #this function causes the ship to lose a front missle (if existant)
     #or a back missle (if existant).
-    def loseAccidentalMissle(self, numMissles):
+    def loseAccidentalMissile(self, numMissles):
         for x in range(numMissles):
             if self.frontTube > 0:
                 self.frontTube -= 1
@@ -166,18 +166,18 @@ class ServerBoard:
     # has 2 missles loaded *on the same side*)
     def executeFireCommand(self, ship, numMissles):
         if numMissles < (ship.frontTube + ship.backTube):
-            print "Insufficient Missles"
+            print "Insufficient Missiles"
             return
         print "Executing fire command"
         other = self.otherShip(ship)
         if self.canTarget(ship, other):
             arc = self.determineArc(ship, other)
             if (arc == 1) and (ship.frontTube < numMissles):
-                print "Missles not in Front Tubes"
-                ship.loseAccidentalMissle(numMissles)
+                print "Missiles not in Front Tubes"
+                ship.loseAccidentalMissile(numMissles)
             elif arc == 0 and ship.backTube < numMissles:
-                print "Missles not in Back Tubes"
-                ship.loseAccidentalMissle(numMissles)
+                print "Missiles not in Back Tubes"
+                ship.loseAccidentalMissile(numMissles)
             else: #enemy in firing arc and missle(s) in appropriate tube
                 self.removeTorpedos(ship, numMissles, arc)
                 if self.canHit(ship, other):
@@ -194,7 +194,7 @@ class ServerBoard:
                 #tell other to free its jamming dice
         else:
             print "Enemy ship not in firing cone.",numMissles,"missles lost."
-            ship.loseAccidentalMissle(numMissles) #they shot without the enemy in their firing arc
+            ship.loseAccidentalMissile(numMissles) #they shot without the enemy in their firing arc
         ship.lockon = 0
         #tell ship to lose its lockon dice
         self.refreshView()
