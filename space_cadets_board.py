@@ -165,7 +165,7 @@ class ServerBoard:
     #(that call will only made with numMissles == 2 if the firing ship
     # has 2 missles loaded *on the same side*)
     def executeFireCommand(self, ship, numMissles):
-        if numMissles < (ship.frontTube + ship.backTube):
+        if numMissles > (ship.frontTube + ship.backTube):
             print "Insufficient Missiles"
             return
         print "Executing fire command"
@@ -340,5 +340,6 @@ if __name__ == "__main__":
 	b = ServerBoard()
 	time.sleep(.5)
 	b.executeMoveCommand(b.ship1, 'frff')
+	b.executeFireCommand(b.ship1, 2)
 
 	END = raw_input("\n")
