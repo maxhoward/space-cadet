@@ -12,7 +12,7 @@ class Die():
         self.imgs = self.getImgs(sType)
         self.isLocked = False
         self.widget = Label(parent, image = self.imgs[self.faceUpSide])
-        self.widget.pack(side = RIGHT)
+        self.widget.pack(side = LEFT)
         self.widget.bind("<Button-1>", self.toggleLock)
 
 
@@ -40,10 +40,14 @@ class DicePanel:
         self.sType = sType
         self.frame = Frame(parent)
         self.frame.pack()
+
         self.diceCount = self.getCount(sType)
         self.dice = self.makeDice()
+
         self.rollButton = Button(self.frame, text="Reroll", command=self.rollDice)
-        self.rollButton.pack(side = RIGHT)
+        self.rollButton.pack()
+        self.rollButton = Button(self.frame, text="Print Locked Dice", command=self.getLockedDice)
+        self.rollButton.pack()
 
     def getCount(self, sType):
         return 4
@@ -55,6 +59,9 @@ class DicePanel:
         for die in self.dice:
             if not die.isLocked:
                 die.reroll()
+
+    def getLockedDice(self):
+        print [die.faceUpSide for die in self.dice if die.isLocked]
 
 if __name__ == "__main__":
     root = Tk()
