@@ -38,7 +38,7 @@ class Ship:
 
     #returns the relative orientation for a given cardinal direction
     #for example, eastern shields of a south facing ship
-    #would be (E - S) % 4 -> (1 - 2) % 4 -> -1 % 4 -> 3 (or it's left shields)
+    #would be (E - S) % 4 -> (1 - 2) % 4 -> -1 % 4 -> 3 (or its left shields)
     def cardinalShields(self, direction):
         return (direction - self.heading) % 4
 

@@ -7,17 +7,8 @@ import random
 #1a. while preventing newly created Die objects from making extra pointers to ultimately unnecessary lists/dicts
 #2. provide a centralized location for all dice-related images, making them easily findable/editable
 
-dieDict={
-    "Weapons":wpList
-    "Sensors":snList
-    "Tractors":trList
-    "Shields":shList
-    "Helm":hmList
-    "Engineering":egList
-}
-
 #lists of image names go here
-wpList=[]
+wpList=['head.gif','body.gif','tail.gif','2hit.gif','1hit.gif','1hit.gif']
 snList=[]
 trList=[]
 shList=[]
@@ -25,12 +16,21 @@ hmList=[]
 egList=['one.gif','two.gif','three.gif','four.gif','five.gif''six.gif']
 
 
+dieDict={
+    "Weapons":wpList,
+    "Sensors":snList,
+    "Tractors":trList,
+    "Shields":shList,
+    "Helm":hmList,
+    "Engineering":egList
+}
 
-class Die(): #why parens? -wass
+
+class Die(object): 
     """docstring for Die"""
 
-    def __init__(self, parent, sType, panel):
-        self.station = sType
+    def __init__(self, parent, panel):
+        self.station = panel.sType
         self.faces = self.getFaces()
         self.faceUpSide = random.choice(self.faces)
         self.imgs = self.getImgs()
@@ -38,10 +38,10 @@ class Die(): #why parens? -wass
         self.widget = Label(parent, image = self.imgs[self.faceUpSide])
         self.widget.pack(side = LEFT)
         self.widget.bind("<Button-1>", self.toggleLock)
-        self.panel = panel #reference to superclass
+        self.panel = panel #reference to superclass. we could also do this with super(Die,self)
         global dieDict
-        self.imageNames=dieDict[sType]
-        self.images=[PhotoImage(file = name) for name in self.imageNames] 
+        self.imageNames = dieDict[self.station]
+        self.images = [PhotoImage(file = name) for name in self.imageNames] 
 
 
     def toggleLock(self, event):
@@ -60,10 +60,10 @@ class Die(): #why parens? -wass
 
 
 
-class DicePanel:
+class DicePanel(object):
     """docstring for DicePanel"""
-    def __init__(self, parent, sType):
-        self.sType = sType
+    def __init__(self, parent):
+        self.sType = "None"
         self.frame = Frame(parent)
         self.frame.pack()
 
@@ -76,7 +76,7 @@ class DicePanel:
         self.rollButton.pack()
 
     def makeDice(self):
-        return [Die(self.frame, self.sType) for x in range(self.diceCount)]
+        return [Die(parent=self.frame, panel=self) for x in range(self.diceCount)]
 
     def rollDice(self):
         for die in self.dice:
@@ -89,7 +89,8 @@ class DicePanel:
 class WpPanel(DicePanel):
 
     def __init__(self,parent):
-        DicePanel.__init__(self,parent,sType="Weapons")
+        super(WpPanel,self).__init__(parent)
+        self.sType="Weapons"
         self.diceCount=6
 
     #1: head
