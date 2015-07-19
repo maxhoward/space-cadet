@@ -1,0 +1,29 @@
+import Tkinter as tk
+from Station import *
+
+root=tk.Tk();
+
+activeStations=[]
+stationList=[]
+
+stationDict=[
+	"Weapons",
+	"Sensors",
+	"Tractors",
+	"Shields",
+	"Helm",
+	"Engineering"
+]
+
+for x in stationDict:
+	stationList.append(Station(root,x))
+for y in stationList: y.lock()
+
+
+if len(activeStations)>1:
+	activeStations[0].leave()
+	activeStations.pop(0)
+
+
+
+root.mainloop();

@@ -1,0 +1,11 @@
+import dicePanel
+
+class WeaponsDie(Die):
+
+class SensorsDie(Die):
+
+class TractorsDie(Die):
+
+class ShieldsDie(Die):
+
+class HelmDie(Die):

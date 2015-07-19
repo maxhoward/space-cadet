@@ -1,3 +1,8 @@
+dr=raw_input('Enter directory that contains dice images: ')
+
+import os
+os.chdir(dr)
+
 from Tkinter import *
 import ttk
 import random
@@ -9,11 +14,11 @@ import random
 
 #lists of image names go here
 wpList=['head.gif','body.gif','tail.gif','2hit.gif','1hit.gif','1hit.gif']
-snList=[]
-trList=[]
-shList=[]
-hmList=[]
-egList=['one.gif','two.gif','three.gif','four.gif','five.gif''six.gif']
+snList=['1lock.gif','2lock.gif','1jam.gif','2jam.gif','star.gif','star.gif']
+trList=['Amine.gif','Bmine.gif','1pull.gif','2pull.gif','triangles.gif','triangles.gif']
+shList=['front.gif','right.gif','back.gif','left.gif','circle.gif','circle.gif']
+hmList=['upLeft.gif','upRight.gif','up2.gif','Uturn.gif','up1.gif','up1.gif']
+egList=['one.gif','two.gif','three.gif','four.gif','five.gif','six.gif']
 
 
 dieDict={
@@ -25,49 +30,66 @@ dieDict={
     "Engineering":egList
 }
 
+#these are bare-bones classes i used for testing inheritance
+class testDie(object):
+    def __init__(self,parent):
+        self.sType=parent.sType
 
+        global dieDict
+        self.lst = dieDict[self.sType]
+
+class testPanel(object):
+    def __init__(self,sType):
+        self.sType=sType
+        self.dc=self.mkDc()
+
+    def mkDc(self):
+        return testDie(parent=self)
+
+class testWpPanel(testPanel):
+    def __init__(self):
+        super(testWpPanel,self).__init__(sType="Weapons")
+        
+
+#these are real
 class Die(object): 
     """docstring for Die"""
 
     def __init__(self, parent, panel):
-        self.station = panel.sType
+        self.sType = panel.sType
         self.faces = self.getFaces()
         self.faceUpSide = random.choice(self.faces)
-        self.imgs = self.getImgs()
         self.isLocked = False
-        self.widget = Label(parent, image = self.imgs[self.faceUpSide])
+
+        global dieDict
+        self.imageNames = dieDict[self.sType]
+        self.images = [PhotoImage(file = name) for name in self.imageNames]
+        self.widget = Label(parent, image = self.images[self.faceUpSide])
         self.widget.pack(side = LEFT)
         self.widget.bind("<Button-1>", self.toggleLock)
-        self.panel = panel #reference to superclass. we could also do this with super(Die,self)
-        global dieDict
-        self.imageNames = dieDict[self.station]
-        self.images = [PhotoImage(file = name) for name in self.imageNames] 
-
-
+        self.panel = panel #reference to owning DicePanel
+        
     def toggleLock(self, event):
         self.isLocked = not self.isLocked
 
     def getFaces(self):
-        return range(1,7)
-
-    def getImgs(self):
-        return {x:self.images[x-1] for x in self.faces}
+        return range(0,6)
 
     def reroll(self):
         self.faceUpSide = random.choice(self.faces)
-        self.widget.configure(image = self.imgs[self.faceUpSide])
+        self.widget.configure(image = self.images[self.faceUpSide])
 
 
 
 
 class DicePanel(object):
     """docstring for DicePanel"""
-    def __init__(self, parent):
-        self.sType = "None"
+    def __init__(self, parent,sType,diceCount):
+        self.sType = sType
         self.frame = Frame(parent)
         self.frame.pack()
 
-        self.diceCount=4
+        self.diceCount=diceCount
         self.dice = self.makeDice()
 
         self.rollButton = Button(self.frame, text="Reroll", command=self.rollDice)
@@ -89,9 +111,7 @@ class DicePanel(object):
 class WpPanel(DicePanel):
 
     def __init__(self,parent):
-        super(WpPanel,self).__init__(parent)
-        self.sType="Weapons"
-        self.diceCount=6
+        super(WpPanel,self).__init__(parent=parent,sType="Weapons",diceCount=6)
 
     #1: head
     #2: body
@@ -102,8 +122,7 @@ class WpPanel(DicePanel):
 class SnPanel(DicePanel):
 
     def __init__(self,parent):
-        DicePanel.__init__(self,parent,sType="Sensors")
-        self.diceCount=4
+        super(SnPanel,self).__init__(parent=parent,sType="Sensors",diceCount=4)
 
     #1: one lock
     #2: two lock
@@ -114,8 +133,7 @@ class SnPanel(DicePanel):
 class TrPanel(DicePanel):
         
     def __init__(self,parent):
-        DicePanel.__init__(self,parent,sType="Tractors")
-        self.diceCount=3
+        super(TrPanel,self).__init__(parent=parent,sType="Tractors",diceCount=3)
 
     #1: A mine
     #2: B mine
@@ -125,8 +143,7 @@ class TrPanel(DicePanel):
 
 class ShPanel(DicePanel):
     def __init__(self,parent):
-        DicePanel.__init__(self,parent,sType="Shields")
-        self.diceCount=3
+        super(ShPanel,self).__init__(parent=parent,sType="Shields",diceCount=3)
 
     #note that FRBL order matches Ship.shields' ordering in space_cadets_board.py
     #1: front
@@ -144,8 +161,7 @@ class ShPanel(DicePanel):
 
 class HmPanel(DicePanel):
     def __init__(self,parent):
-        DicePanel.__init__(self,parent,sType="Helm")
-        self.diceCount=3
+        super(HmPanel,self).__init__(parent=parent,sType="Helm",diceCount=3)
 
     #1: forward left
     #2: forward right
@@ -155,12 +171,15 @@ class HmPanel(DicePanel):
 
 class EgPanel(DicePanel):
     def __init__(self,parent):
-        DicePanel.__init__(self,parent,sType="Engineering") 
-        self.diceCount=6
+        super(EgPanel,self).__init__(parent=parent,sType="Engineering",diceCount=6)
 
     #faces operate normally for now; will interact with Station.py stations eventually
 
 if __name__ == "__main__":
     root = Tk()
-    panel = DicePanel(root, "Engineering")
+    p = HmPanel(root) #testing subclass rather than parent DicePanel
+    print p.sType
     root.mainloop()
+    
+    # t=testWpPanel()
+    # print t.dc.sType
